@@ -76,8 +76,11 @@ def main():
     r15 = instrument.read_register(15)
     r16 = instrument.read_register(16)
 
-    if r14 == reg14 and r15 == reg15 and r16 == reg16:
+    # Some controllers overwrite day-of-week; validate hour/min + month/day + year
+    wrote_ok = (r14 == reg14 and r15 == reg15 and (r16 & 0x00FF) == (reg16 & 0x00FF))
+    if wrote_ok:
         print(f"Set time to {now} (reg14={reg14}, reg15={reg15}, reg16={reg16})")
+        print(f"Read back: reg14={r14}, reg15={r15}, reg16={r16}")
     else:
         print("Write may not have taken effect.")
         print(f"Read back: reg14={r14}, reg15={r15}, reg16={r16}")
