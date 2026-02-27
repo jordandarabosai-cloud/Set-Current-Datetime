@@ -4,7 +4,10 @@ try:
     from zoneinfo import ZoneInfo
 except ImportError:
     from backports.zoneinfo import ZoneInfo
-from pymodbus.client import ModbusSerialClient
+try:
+    from pymodbus.client import ModbusSerialClient
+except ImportError:
+    from pymodbus.client.sync import ModbusSerialClient
 
 PORT = "/dev/USB232"
 SLAVE_ID = 157
