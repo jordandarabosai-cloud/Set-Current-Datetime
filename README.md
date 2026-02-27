@@ -8,6 +8,7 @@ Sets the current date/time on a Generac Evolution controller over Modbus RTU.
 
 ```bash
 pip install pymodbus
+pip install backports.zoneinfo  # for Python <3.9
 ```
 
 ## Usage
