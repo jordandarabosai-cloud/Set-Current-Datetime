@@ -90,22 +90,34 @@ def main():
         print("Write exception (no response). Will verify by reading back...", exc)
 
     # Read back to verify
+    import time
+    time.sleep(1.5)
     try:
-        rr14 = client.read_holding_registers(14, 1, unit=SLAVE_ID)
-        rr15 = client.read_holding_registers(15, 1, unit=SLAVE_ID)
-        rr16 = client.read_holding_registers(16, 1, unit=SLAVE_ID)
+        r14 = r15 = r16 = None
+        last_err = None
+        for attempt in range(3):
+            rr14 = client.read_holding_registers(14, 1, unit=SLAVE_ID)
+            rr15 = client.read_holding_registers(15, 1, unit=SLAVE_ID)
+            rr16 = client.read_holding_registers(16, 1, unit=SLAVE_ID)
 
-        if rr14.isError() or rr15.isError() or rr16.isError():
-            print("Readback failed:", rr14, rr15, rr16)
-        else:
+            if rr14.isError() or rr15.isError() or rr16.isError():
+                last_err = (rr14, rr15, rr16)
+                time.sleep(0.5)
+                continue
+
             r14 = rr14.registers[0]
             r15 = rr15.registers[0]
             r16 = rr16.registers[0]
-            if r14 == reg14 and r15 == reg15 and r16 == reg16:
-                print(f"Set time to {now} (reg14={reg14}, reg15={reg15}, reg16={reg16})")
-            else:
-                print("Write did not take effect.")
-                print(f"Read back: reg14={r14}, reg15={r15}, reg16={r16}")
+            last_err = None
+            break
+
+        if last_err is not None:
+            print("Readback failed:", *last_err)
+        elif r14 == reg14 and r15 == reg15 and r16 == reg16:
+            print(f"Set time to {now} (reg14={reg14}, reg15={reg15}, reg16={reg16})")
+        else:
+            print("Write did not take effect.")
+            print(f"Read back: reg14={r14}, reg15={r15}, reg16={r16}")
     except Exception as exc:
         print("Readback failed:", exc)
 
