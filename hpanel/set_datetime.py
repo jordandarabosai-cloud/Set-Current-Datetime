@@ -8,7 +8,7 @@ except ImportError:
 import minimalmodbus
 
 PORT = "/dev/USB232"
-SLAVE_ID = 157
+SLAVE_ID = 100
 BAUD = 9600
 PARITY = minimalmodbus.serial.PARITY_NONE
 STOPBITS = 1
