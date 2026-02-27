@@ -82,13 +82,25 @@ def main():
         return
 
     # Write three registers at once (matches genmon behavior)
-    result = client.write_registers(address=14, values=[reg14, reg15, reg16], unit=SLAVE_ID)
-    if result.isError():
-        print("Write error:", result)
-        client.close()
-        return
+    try:
+        result = client.write_registers(address=14, values=[reg14, reg15, reg16], unit=SLAVE_ID)
+        if result.isError():
+            print("Write error (no response). Will verify by reading back...")
+    except Exception as exc:
+        print("Write exception (no response). Will verify by reading back...", exc)
 
-    print(f"Set time to {now} (reg14={reg14}, reg15={reg15}, reg16={reg16})")
+    # Read back to verify
+    try:
+        r14 = client.read_holding_registers(14, 1, unit=SLAVE_ID).registers[0]
+        r15 = client.read_holding_registers(15, 1, unit=SLAVE_ID).registers[0]
+        r16 = client.read_holding_registers(16, 1, unit=SLAVE_ID).registers[0]
+        if r14 == reg14 and r15 == reg15 and r16 == reg16:
+            print(f"Set time to {now} (reg14={reg14}, reg15={reg15}, reg16={reg16})")
+        else:
+            print("Write did not take effect.")
+            print(f"Read back: reg14={r14}, reg15={r15}, reg16={r16}")
+    except Exception as exc:
+        print("Readback failed:", exc)
 
     client.close()
 
