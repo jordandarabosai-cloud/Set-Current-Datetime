@@ -92,6 +92,20 @@ def main():
     # Read back to verify
     import time
     time.sleep(1.5)
+
+    # Reconnect before readback (some adapters get stuck after write)
+    client.close()
+    time.sleep(0.2)
+    client = ModbusSerialClient(
+        port=PORT,
+        baudrate=BAUD,
+        parity=PARITY,
+        stopbits=STOPBITS,
+        bytesize=8,
+        timeout=2
+    )
+    client.connect()
+
     try:
         r14 = r15 = r16 = None
         last_err = None
