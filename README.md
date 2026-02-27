@@ -35,3 +35,13 @@ python3 hpanel/set_datetime.py
 ```
 
 Registers used (per genmon): 0x00E0–0x00E3 (hour/min, sec/dow, month/day, year).
+
+## PowerZone 410 Controller
+
+Use the script under `powerzone/` to set the PowerZone time.
+
+```bash
+python3 powerzone/set_datetime.py
+```
+
+Registers used (per genmon): 0x015D–0x0160 (hour/min, sec/dow, month/day, year).
