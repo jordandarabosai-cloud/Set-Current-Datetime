@@ -4,15 +4,13 @@ try:
     from zoneinfo import ZoneInfo
 except ImportError:
     from backports.zoneinfo import ZoneInfo
-try:
-    from pymodbus.client import ModbusSerialClient
-except ImportError:
-    from pymodbus.client.sync import ModbusSerialClient
+
+import minimalmodbus
 
 PORT = "/dev/USB232"
 SLAVE_ID = 157
 BAUD = 9600
-PARITY = "N"
+PARITY = minimalmodbus.serial.PARITY_NONE
 STOPBITS = 1
 
 TZ_OPTIONS = {
@@ -26,11 +24,6 @@ DEFAULT_CHOICE = "2"
 
 def pack(hi, lo):
     return (hi << 8) | lo
-
-
-def dow_sun0(dt):
-    # Python: Monday=0..Sunday=6; we need Sunday=0..Saturday=6
-    return (dt.weekday() + 1) % 7
 
 
 def pick_timezone():
@@ -56,7 +49,8 @@ def main():
         time.sleep(60 - now.second)
         now = datetime.now(ZoneInfo(tz))
 
-    print(f"\nUsing timezone: {label} ({tz})")
+    print(f"
+Using timezone: {label} ({tz})")
     print(f"Target datetime: {now.strftime('%Y-%m-%d %H:%M:%S %Z')}")
     confirm = input("Write this time to controller? (yes/no): ").strip().lower()
     if confirm not in ("y", "yes"):
@@ -65,107 +59,29 @@ def main():
 
     reg14 = pack(now.hour, now.minute)            # 0x000E
     reg15 = pack(now.month, now.day)              # 0x000F
-    # genmon sets day-of-week to 0 when writing time
-    reg16 = pack(0, now.year % 100)   # 0x0010
+    reg16 = pack(0, now.year % 100)               # 0x0010 (dow=0 per genmon)
 
-    client = ModbusSerialClient(
-        port=PORT,
-        baudrate=BAUD,
-        parity=PARITY,
-        stopbits=STOPBITS,
-        bytesize=8,
-        timeout=2
-    )
+    instrument = minimalmodbus.Instrument(PORT, SLAVE_ID)
+    instrument.serial.baudrate = BAUD
+    instrument.serial.parity = PARITY
+    instrument.serial.stopbits = STOPBITS
+    instrument.serial.timeout = 2
 
-    if not client.connect():
-        print("Failed to connect to serial port")
-        return
+    # Write all three registers at once (FC16)
+    instrument.write_registers(14, [reg14, reg15, reg16])
 
-    # Write three registers at once (matches genmon behavior)
-    try:
-        result = client.write_registers(address=14, values=[reg14, reg15, reg16], unit=SLAVE_ID)
-        if result.isError():
-            print("Write error (no response). Will verify by reading back...")
-    except Exception as exc:
-        print("Write exception (no response). Will verify by reading back...", exc)
-
-    # Read back to verify
+    # Read back after a short delay
     import time
     time.sleep(10)
+    r14 = instrument.read_register(14)
+    r15 = instrument.read_register(15)
+    r16 = instrument.read_register(16)
 
-    # Reconnect before readback
-    client.close()
-    time.sleep(0.2)
-    client = ModbusSerialClient(
-        port=PORT,
-        baudrate=BAUD,
-        parity=PARITY,
-        stopbits=STOPBITS,
-        bytesize=8,
-        timeout=2
-    )
-    client.connect()
-
-    try:
-        rr14 = client.read_holding_registers(14, 1, unit=SLAVE_ID)
-        rr15 = client.read_holding_registers(15, 1, unit=SLAVE_ID)
-        rr16 = client.read_holding_registers(16, 1, unit=SLAVE_ID)
-        if rr14.isError() or rr15.isError() or rr16.isError():
-            print("Readback failed:", rr14, rr15, rr16)
-        else:
-            r14 = rr14.registers[0]
-            r15 = rr15.registers[0]
-            r16 = rr16.registers[0]
-            if r14 == reg14 and r15 == reg15 and r16 == reg16:
-                print(f"Set time to {now} (reg14={reg14}, reg15={reg15}, reg16={reg16})")
-            else:
-                print("Write did not take effect.")
-                print(f"Read back: reg14={r14}, reg15={r15}, reg16={r16}")
-    except Exception as exc:
-        print("Readback failed:", exc)
-
-    client.close()
-    time.sleep(0.2)
-    client = ModbusSerialClient(
-        port=PORT,
-        baudrate=BAUD,
-        parity=PARITY,
-        stopbits=STOPBITS,
-        bytesize=8,
-        timeout=2
-    )
-    client.connect()
-
-    try:
-        r14 = r15 = r16 = None
-        last_err = None
-        for attempt in range(3):
-            rr14 = client.read_holding_registers(14, 1, unit=SLAVE_ID)
-            rr15 = client.read_holding_registers(15, 1, unit=SLAVE_ID)
-            rr16 = client.read_holding_registers(16, 1, unit=SLAVE_ID)
-
-            if rr14.isError() or rr15.isError() or rr16.isError():
-                last_err = (rr14, rr15, rr16)
-                time.sleep(0.5)
-                continue
-
-            r14 = rr14.registers[0]
-            r15 = rr15.registers[0]
-            r16 = rr16.registers[0]
-            last_err = None
-            break
-
-        if last_err is not None:
-            print("Readback failed:", *last_err)
-        elif r14 == reg14 and r15 == reg15 and r16 == reg16:
-            print(f"Set time to {now} (reg14={reg14}, reg15={reg15}, reg16={reg16})")
-        else:
-            print("Write did not take effect.")
-            print(f"Read back: reg14={r14}, reg15={r15}, reg16={r16}")
-    except Exception as exc:
-        print("Readback failed:", exc)
-
-    client.close()
+    if r14 == reg14 and r15 == reg15 and r16 == reg16:
+        print(f"Set time to {now} (reg14={reg14}, reg15={reg15}, reg16={reg16})")
+    else:
+        print("Write may not have taken effect.")
+        print(f"Read back: reg14={r14}, reg15={r15}, reg16={r16}")
 
 
 if __name__ == "__main__":

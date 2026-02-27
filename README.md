@@ -4,10 +4,10 @@ Sets the current date/time on a Generac Evolution controller over Modbus RTU.
 
 ## Requirements
 - Python 3.9+
-- `pymodbus`
+- `minimalmodbus`
 
 ```bash
-pip install pymodbus
+pip install minimalmodbus
 pip install backports.zoneinfo  # for Python <3.9
 ```
 
