@@ -91,9 +91,39 @@ def main():
 
     # Read back to verify
     import time
-    time.sleep(1.5)
+    time.sleep(10)
 
-    # Reconnect before readback (some adapters get stuck after write)
+    # Reconnect before readback
+    client.close()
+    time.sleep(0.2)
+    client = ModbusSerialClient(
+        port=PORT,
+        baudrate=BAUD,
+        parity=PARITY,
+        stopbits=STOPBITS,
+        bytesize=8,
+        timeout=2
+    )
+    client.connect()
+
+    try:
+        rr14 = client.read_holding_registers(14, 1, unit=SLAVE_ID)
+        rr15 = client.read_holding_registers(15, 1, unit=SLAVE_ID)
+        rr16 = client.read_holding_registers(16, 1, unit=SLAVE_ID)
+        if rr14.isError() or rr15.isError() or rr16.isError():
+            print("Readback failed:", rr14, rr15, rr16)
+        else:
+            r14 = rr14.registers[0]
+            r15 = rr15.registers[0]
+            r16 = rr16.registers[0]
+            if r14 == reg14 and r15 == reg15 and r16 == reg16:
+                print(f"Set time to {now} (reg14={reg14}, reg15={reg15}, reg16={reg16})")
+            else:
+                print("Write did not take effect.")
+                print(f"Read back: reg14={r14}, reg15={r15}, reg16={r16}")
+    except Exception as exc:
+        print("Readback failed:", exc)
+
     client.close()
     time.sleep(0.2)
     client = ModbusSerialClient(
