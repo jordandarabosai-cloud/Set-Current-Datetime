@@ -50,6 +50,12 @@ def main():
     label, tz = pick_timezone()
     now = datetime.now(ZoneInfo(tz))
 
+    # align to the top of the minute (seconds = 0), like genmon
+    while now.second != 0:
+        import time
+        time.sleep(60 - now.second)
+        now = datetime.now(ZoneInfo(tz))
+
     print(f"\nUsing timezone: {label} ({tz})")
     print(f"Target datetime: {now.strftime('%Y-%m-%d %H:%M:%S %Z')}")
     confirm = input("Write this time to controller? (yes/no): ").strip().lower()
@@ -59,7 +65,8 @@ def main():
 
     reg14 = pack(now.hour, now.minute)            # 0x000E
     reg15 = pack(now.month, now.day)              # 0x000F
-    reg16 = pack(dow_sun0(now), now.year % 100)   # 0x0010
+    # genmon sets day-of-week to 0 when writing time
+    reg16 = pack(0, now.year % 100)   # 0x0010
 
     client = ModbusSerialClient(
         port=PORT,
@@ -74,17 +81,10 @@ def main():
         print("Failed to connect to serial port")
         return
 
-    # Write registers one at a time (some controllers reject multi-write)
-    if client.write_register(14, reg14, unit=SLAVE_ID).isError():
-        print("Write error on reg 14")
-        client.close()
-        return
-    if client.write_register(15, reg15, unit=SLAVE_ID).isError():
-        print("Write error on reg 15")
-        client.close()
-        return
-    if client.write_register(16, reg16, unit=SLAVE_ID).isError():
-        print("Write error on reg 16")
+    # Write three registers at once (matches genmon behavior)
+    result = client.write_registers(address=14, values=[reg14, reg15, reg16], unit=SLAVE_ID)
+    if result.isError():
+        print("Write error:", result)
         client.close()
         return
 
