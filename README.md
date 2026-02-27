@@ -25,3 +25,13 @@ Defaults:
 - Port: `/dev/USB232`
 - Slave ID: `157`
 - Baud: `9600` (8N1)
+
+## HPanel Controller
+
+Use the script under `hpanel/` to set the HPanel controller time.
+
+```bash
+python3 hpanel/set_datetime.py
+```
+
+Registers used (per genmon): 0x00E0–0x00E3 (hour/min, sec/dow, month/day, year).
