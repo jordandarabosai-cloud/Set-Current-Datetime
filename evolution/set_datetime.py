@@ -74,11 +74,21 @@ def main():
         print("Failed to connect to serial port")
         return
 
-    result = client.write_registers(address=14, values=[reg14, reg15, reg16], unit=SLAVE_ID)
-    if result.isError():
-        print("Write error:", result)
-    else:
-        print(f"Set time to {now} (reg14={reg14}, reg15={reg15}, reg16={reg16})")
+    # Write registers one at a time (some controllers reject multi-write)
+    if client.write_register(14, reg14, unit=SLAVE_ID).isError():
+        print("Write error on reg 14")
+        client.close()
+        return
+    if client.write_register(15, reg15, unit=SLAVE_ID).isError():
+        print("Write error on reg 15")
+        client.close()
+        return
+    if client.write_register(16, reg16, unit=SLAVE_ID).isError():
+        print("Write error on reg 16")
+        client.close()
+        return
+
+    print(f"Set time to {now} (reg14={reg14}, reg15={reg15}, reg16={reg16})")
 
     client.close()
 
