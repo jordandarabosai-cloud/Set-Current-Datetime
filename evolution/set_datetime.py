@@ -49,8 +49,7 @@ def main():
         time.sleep(60 - now.second)
         now = datetime.now(ZoneInfo(tz))
 
-    print(f"
-Using timezone: {label} ({tz})")
+    print(f"\nUsing timezone: {label} ({tz})")
     print(f"Target datetime: {now.strftime('%Y-%m-%d %H:%M:%S %Z')}")
     confirm = input("Write this time to controller? (yes/no): ").strip().lower()
     if confirm not in ("y", "yes"):
